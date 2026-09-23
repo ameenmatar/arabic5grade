@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الاختبار التشخيصي - اللغة العربية الخامس الأساسي</title>
+    <!-- استدعاء Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- استدعاء SheetJS لتصدير الإكسل -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Tajawal', sans-serif; background-color: #f3f4f6; padding: 20px; }
+        .hidden { display: none !important; }
+        
+        /* نقش الكوفية */
+        .keffiyeh-pattern {
+            background-color: #f9fafb;
+            background-image: 
+                linear-gradient(45deg, #cbd5e1 25%, transparent 25%, transparent 75%, #cbd5e1 75%, #cbd5e1),
+                linear-gradient(45deg, #cbd5e1 25%, transparent 25%, transparent 75%, #cbd5e1 75%, #cbd5e1);
+            background-size: 28px 28px;
+            background-position: 0 0, 14px 14px;
+        }
+        
+        /* تصميم علم فلسطين الكامل كإطار للصفحة */
+        .flag-wrapper {
+            position: relative;
+            background: linear-gradient(to bottom, #000000 33.33%, #ffffff 33.33%, #ffffff 66.66%, #16a34a 66.66%);
+            padding: 24px;
+            border-radius: 1.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            overflow: hidden;
+        }
+        
+        /* المثلث الأحمر لعلم فلسطين */
+        .flag-wrapper::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 120px;
+            height: 100%;
+            background-color: #dc2626;
+            clip-path: polygon(100% 0, 0 50%, 100% 100%);
+            z-index: 1;
+        }
+
+        /* حاوية المحتوى الداخلية */
+        .content-container {
+            position: relative;
+            z-index: 10;
+            background-color: white;
+            border-radius: 1rem;
+            min-height: 85vh;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <!-- الحاوية الرئيسية مع إطار العلم الكامل -->
+    <div class="max-w-5xl mx-auto mt-4 mb-10 flag-wrapper">
+        
+        <!-- المحتوى الداخلي -->
+        <div class="content-container keffiyeh-pattern p-4 md:p-8">
+            
+            <!-- الترويسة مع زر لوحة تحكم المعلم الواضح -->
+            <div id="header-section" class="relative text-center mb-10 bg-white/95 p-6 rounded-lg shadow-md border-2 border-gray-200">
+                <button type="button" onclick="openTeacherDashboard()" class="absolute top-4 left-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-4 rounded-lg shadow transition cursor-pointer flex items-center gap-2">
+                    <span>👨‍🏫 لوحة تحكم المعلم (النتائج)</span>
+                </button>
+                <h1 class="text-3xl font-bold text-gray-800 mb-2 mt-2 md:mt-0">مدرسة ذكور طمون الأساسية العليا</h1>
+                <h2 class="text-xl text-green-700 font-bold mt-2">امتحان تشخيصي بمبحث اللغة العربية للصف الخامس الأساسي</h2>
+                <p class="text-sm text-gray-600 mt-1">إعداد المعلم: أ. علي بشارات</p>
+            </div>
+
+            <!-- شاشة دخول الطالب (تظهر مباشرة) -->
+            <div id="student-login" class="flex flex-col items-center bg-white p-10 rounded-xl shadow-lg border border-gray-100">
+                <h3 class="text-2xl font-bold mb-6 text-blue-700">أهلاً بك يا بطل الصف الخامس!</h3>
+                <div class="w-full max-w-md space-y-5">
+                    <input type="text" id="student-name" placeholder="أدخل اسمك الثلاثي هنا..." class="border-2 border-gray-300 p-4 rounded-lg w-full text-center focus:outline-none focus:border-blue-500 text-lg font-bold">
+                    <select id="student-section" class="border-2 border-gray-300 p-4 rounded-lg w-full text-center focus:outline-none focus:border-blue-500 text-lg font-bold">
+                        <option value="" disabled selected>اختر الشعبة...</option>
+                        <option value="أ">شعبة ( أ )</option>
+                        <option value="ب">شعبة ( ب )</option>
+                        <option value="ج">شعبة ( ج )</option>
+                    </select>
+                </div>
+                <div class="flex gap-4 mt-8">
+                    <button type="button" onclick="checkTestAndStart()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-10 rounded-lg shadow transition text-lg cursor-pointer">بدء الاختبار الآن</button>
+                </div>
+                <p id="student-error" class="text-red-500 mt-4 font-bold text-lg hidden"></p>
+            </div>
+
+            <!-- شاشة الاختبار -->
+            <div id="test-section" class="hidden bg-white/95 p-4 rounded-xl shadow-lg">
+                <!-- شريط معلومات الطالب والمؤقت -->
+                <div class="sticky top-0 bg-blue-50 p-4 rounded-lg mb-6 border-2 border-blue-200 shadow-md flex flex-col md:flex-row justify-between items-center z-50 gap-4">
+                    <div class="text-lg">
+                        <span class="font-bold text-gray-700">الطالب: <span id="display-student-name" class="text-blue-700 font-extrabold"></span></span>
+                        <span class="font-bold text-gray-700 mr-6">الشعبة: <span id="display-student-section" class="text-blue-700 font-extrabold"></span></span>
+                    </div>
+                    <div class="bg-red-100 border-2 border-red-500 px-6 py-2 rounded-lg font-bold text-red-700 text-xl flex items-center gap-2 shadow-inner">
+                        <span>الوقت المتبقي:</span>
+                        <span id="timer-display" class="tracking-wider">40:00</span>
+                    </div>
+                </div>
+                
+                <!-- تعليمات الأسئلة -->
+                <div class="mb-4 bg-yellow-50 border border-yellow-300 p-4 rounded-lg text-yellow-800 font-bold text-center">
+                    يتكون الاختبار من 40 سؤالاً في مهارات وقواعد اللغة العربية للصف الخامس. كل سؤال بـ 2.5 علامة (المجموع الكلي 100).
+                </div>
+
+                <div id="questions-container" class="space-y-6 mb-8 bg-white p-2 md:p-6 rounded-lg border border-gray-100"></div>
+                
+                <div class="text-center pb-6">
+                    <button type="button" onclick="submitTest()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-20 rounded-lg shadow-lg text-2xl transition border-b-4 border-green-800 cursor-pointer">تسليم الإجابات</button>
+                </div>
+            </div>
+
+            <!-- شاشة النتيجة -->
+            <div id="result-section" class="hidden text-center py-16 bg-white p-10 rounded-xl shadow-lg border border-gray-100">
+                <h2 class="text-4xl font-bold mb-6 text-gray-800">تم تسليم الاختبار بنجاح!</h2>
+                <p class="text-2xl mb-8 font-bold text-gray-600">العلامة النهائية:</p>
+                <div class="inline-block bg-green-50 border-8 border-green-500 rounded-full p-12 mb-10 shadow-inner">
+                    <span id="final-score" class="text-6xl font-bold text-green-700"></span><span class="text-3xl text-green-700 font-bold"> / 100</span>
+                </div>
+                <br>
+                <button type="button" onclick="location.reload()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-12 rounded-lg text-xl shadow-md cursor-pointer">الصفحة الرئيسية</button>
+            </div>
+
+            <!-- لوحة تحكم المعلم -->
+            <div id="teacher-dashboard" class="hidden bg-white p-4 md:p-8 rounded-xl shadow-lg border border-gray-100">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-8 border-b-2 border-gray-200 pb-6 gap-4">
+                    <h3 class="text-3xl font-bold text-gray-800">لوحة تحكم المعلم أ. علي بشارات - نتائج اللغة العربية</h3>
+                    <button type="button" onclick="location.reload()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-8 rounded-lg transition shadow-md text-lg cursor-pointer">إغلاق اللوحة</button>
+                </div>
+
+                <!-- قسم النتائج والتصدير -->
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                    <h4 class="text-2xl font-bold text-gray-700">سجل نتائج الطلاب</h4>
+                    <div class="flex gap-3 flex-wrap justify-center">
+                        <button type="button" onclick="exportAdvancedExcel()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition shadow-md text-sm md:text-lg cursor-pointer">تصدير إكسل ذكي (علامات + تحليل)</button>
+                        <button type="button" onclick="clearData()" class="bg-gray-800 hover:bg-black text-white font-bold py-3 px-6 rounded-lg transition shadow-md text-sm md:text-lg cursor-pointer">مسح النتائج</button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto shadow-sm rounded-lg border-2 border-gray-200">
+                    <table class="min-w-full bg-white text-lg">
+                        <thead class="bg-gray-800 text-white">
+                            <tr>
+                                <th class="py-4 px-4 text-right">الرقم</th>
+                                <th class="py-4 px-4 text-right">اسم الطالب</th>
+                                <th class="py-4 px-4 text-center">الشعبة</th>
+                                <th class="py-4 px-4 text-center">العلامة</th>
+                                <th class="py-4 px-4 text-center">تاريخ التقديم</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-table-body" class="divide-y divide-gray-200 font-bold">
+                            <!-- سيتم تعبئة النتائج هنا -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const fullQuestions = [
+            { q: "1. ما نوع الكلمة (يقرأُ) من حيث القسم؟", options: ["اسم", "فعل مضارع", "فعل ماض", "حرف"], a: 1 },
+            { q: "2. الكلمة التي تبدأ بتاء مفتوحة وتدل على اسم جمع مؤنث سالم هي:", options: ["معلمات", "بنت", "بيت", "صوت"], a: 0 },
+            { q: "3. ما هو إعراب الفاعل في جملة (شربَ الولدُ الحليبَ)؟", options: ["مفعول به منصوب", "فاعل مرفوع وعلامة رفعه الضمة", "مبتدأ مرفوع", "اسم مجرور"], a: 1 },
+            { q: "4. علامة الإعراب الأصلية للنصب في الاسم المفرد هي:", options: ["الضمة", "الكسرة", "الفتحة", "السكون"], a: 2 },
+            { q: "5. أي من الكلمات الآتية تحتوى على لام شمسية؟", options: ["القمر", "الشمس", "الكتاب", "المعلم"], a: 1 },
+            { q: "6. أي من الكلمات الآتية تحتوى على لام قمرية؟", options: ["السيارة", "التراب", "الدفتر", "الماء"], a: 3 },
+            { q: "7. ما نوع الجملة (المعلمُ مخلصٌ)؟", options: ["جملة فعلية", "جملة اسمية", "شبه جملة", "حرف جر"], a: 1 },
+            { q: "8. الركن الثاني المتمم لمعنى الجملة الاسمية (المبتدأ و...) هو:", options: ["الفاعل", "الخبر", "المفعول به", "المضاف إليه"], a: 1 },
+            { q: "9. الكلمة المناسبة لتملأ الفراغ في جملة (ذهب الأصدقاءُ إلى...) هي:", options: ["المكتبةِ", "المكتبةَ", "المكتبةُ", "المكتبتان"], a: 0 },
+            { q: "10. ما نوع الجمع في كلمة (مسلمون)؟", options: ["جمع تكسير", "جمع مؤنث سالم", "جمع مذكر سالم", "مثنى"], a: 2 },
+            { q: "11. ما جمع كلمة (مفتاح)؟", options: ["مفاتيح", "فتوحات", "مفتحون", "مفتاحان"], a: 0 },
+            { q: "12. التاء المربوطة (ة) في آخِر الكلمة تلفظ عند الوقف:", options: ["هاءً", "تاءً واضحةً", "ألفاً", "واواً"], a: 0 },
+            { q: "13. أي الكلمات الآتية كتبت فيها التاء المربوطة بشكل صحيح؟", options: ["معلمة", "بنته", "بيته", "شربت"], a: 0 },
+            { q: "14. الهمزة في أول كلمة (إِسلام) هي همزة:", options: ["وصل", "قطع مكسورة", "قطع مضمومة", "متوسطة"], a: 1 },
+            { q: "15. الهمزة في أول كلمة (اِستخرج) هي همزة:", options: ["قطع", "وصل", "متطرفة", "مفتوحة"], a: 1 },
+            { q: "16. ضد كلمة (واسع) هو:", options: ["كبير", "ضيق", "طويل", "جميل"], a: 1 },
+            { q: "17. مرادف كلمة (شجاع) هو:", options: ["جبان", "بطل (شجاع/جريء)", "خائف", "ضعيف"], a: 1 },
+            { q: "18. الفعل الماضي المناسب لـ (تكتبُ الطفلةُ) هو:", options: ["كتبتْ", "يكتبُ", "اكتبْ", "كاتب"], a: 0 },
+            { q: "19. فعل الأمر المناسب للمخاطب المفرد المذكر من الفعل (لعبَ) هو:", options: ["العبْ", "تلعبُ", "لعبتَ", "لاعب"], a: 0 },
+            { q: "20. الجملة الفعلية تبدأ بـ:", options: ["اسم", "فعل", "حرف", "ضمير"], a: 1 },
+            { q: "21. الضمير المنفصل المناسب للفراغ (...... مهندسون مجتهدون) هو:", options: ["أنتما", "همْ", "هنَّ", "أنتِ"], a: 1 },
+            { q: "22. الضمير المنفصل للمخاطبة المفردة المؤنثة هو:", options: ["أنتَ", "أنتِ", "أنتم", "أنا"], a: 1 },
+            { q: "23. حرف الجر في جملة (وضع الطالب القلمَ في الحقيبةِ) هو:", options: ["الطالب", "القلم", "في", "الحقيبة"], a: 2 },
+            { q: "24. الاسم المجرور في جملة (سلمت على الصديقِ) هو:", options: ["سلمت", "على", "الصديق", "لا يوجد"], a: 2 },
+            { q: "25. المثنى من كلمة (طالب) هو:", options: ["طالبانِ أو طالبينِ", "طلاب", "طالبات", "طالبون"], a: 0 },
+            { q: "26. علامة رفع المثنى هي:", options: ["الضمة", "الألف", "الواو", "الفتحة"], a: 1 },
+            { q: "27. الكلمة التي تمثل (اسم إشارة) للمفرد المذكر هي:", options: ["هذه", "هذا", "هؤلاء", "ذلك"], a: 1 },
+            { q: "28. اسم الإشارة المناسب للجمع (...... مهندسون) هو:", options: ["هذه", "هؤلاء", "ذلك", "تلك"], a: 1 },
+            { q: "29. الاسم الموصول المناسب للمفرد المذكر (الفلاحُ ...... زرع الأرض نشيط) هو:", options: ["التي", "الذي", "الذين", "اللتان"], a: 1 },
+            { q: "30. الكلمة المكتوبة بطريقة إملاائية صحيحة من بين البدائل هي:", options: ["سئل", "سأَلَ (مسألة)", "مئذنَة", "جميع ما ذكر صحيح"], a: 3 },
+            { q: "31. ما نوع الفعل في (اطمأنَّ المريضُ)؟", options: ["ماضٍ", "مضارع", "أمر", "حرف"], a: 0 },
+            { q: "32. الفاعل في جملة (تفتحَتِ الأزهارُ في الربيعِ) هو:", options: ["تفتحت", "الأزهار", "الربيع", "في"], a: 1 },
+            { q: "33. المفعول به في جملة (رسمَ الطفلُ لوحةً جميلةً) هو:", options: ["رسم", "الطفل", "لوحةً", "جميلةً"], a: 2 },
+            { q: "34. حركة إعراب المفعول به الغالبة في الاسم المفرد هي:", options: ["الضمة", "الكسرة", "الفتحة", "السكون"], a: 2 },
+            { q: "35. الجملة التي تحتوي على حرف عطف (الواو أو الفاء أو ثمَّ) هي:", options: ["أكل أحمد التفاحةَ والموزَ", "ذهب إلى المدرسة", "هذا كتاب مفيد", "الطوّاب نشيط"], a: 0 },
+            { q: "36. حرف العطف في جملة (دخل المعلمُ ثمَّ التلامذةُ) يفيد الترتيب مع:", options: ["السرعة", "التراخي (المهلة)", "الشك", "النفي"], a: 1 },
+            { q: "37. الجملة التي تبدأ بأداة استفهام صحيحة هي:", options: ["متى تسافر إلى القدس؟", "الكتاب مفيد.", "حمد لله على السلامة.", "يا بطل النجاح"], a: 0 },
+            { q: "38. علامة الترقيم المناسبة في نهاية جملة الاستفهام (كم عدد سور القرآن الكريم) هي:", options: ["نقطة (.)", "علامة استفهام (؟)", "فاصلة (,)", "علامة تعجب (!)"], a: 1 },
+            { q: "39. أسلوب النداء في الجملة الآتية يبدأ بـ:", options: ["يا محمدُ، اجتهدْ في درسك", "هل تحب القراءة", "ما أجمل السماء", "لا تكذب"], a: 0 },
+            { q: "40. نوع أسلوب الجملة (ما أجملَ الربيعَ!) هو:", options: ["استفهام", "تعجب", "نهي", "نفي"], a: 1 }
+        ];
+
+        let results = JSON.parse(localStorage.getItem('testResults_grade5_arabic')) || [];
+        let currentStudent = null;
+        let timerInterval;
+        let timeRemaining = 40 * 60;
+        let answers = new Array(40).fill(null);
+
+        function showSection(sectionId) {
+            ['student-login', 'test-section', 'result-section', 'teacher-dashboard'].forEach(sec => {
+                const el = document.getElementById(sec);
+                if (el) el.classList.add('hidden');
+            });
+            const target = document.getElementById(sectionId);
+            if (target) target.classList.remove('hidden');
+        }
+
+        function openTeacherDashboard() {
+            const pass = prompt("أدخل رمز الدخول الخاص بالمعلم:");
+            if (pass === "123456" || pass === "ameen") {
+                renderResultsTable();
+                showSection('teacher-dashboard');
+            } else if (pass !== null) {
+                alert("الرمز غير صحيح!");
+            }
+        }
+
+        function checkTestAndStart() {
+            const nameEl = document.getElementById('student-name');
+            const sectionEl = document.getElementById('student-section');
+            const errorEl = document.getElementById('student-error');
+            
+            const name = nameEl.value.trim();
+            const section = sectionEl.value;
+            
+            if(!name || !section) {
+                errorEl.textContent = "الرجاء إدخال الاسم الثلاثي واختيار الشعبة!";
+                errorEl.classList.remove('hidden');
+                return;
+            }
+            
+            const existingResult = results.find(r => r.name === name && r.section === section);
+            if(existingResult) {
+                errorEl.textContent = "لقد قمت بتقديم الاختبار مسبقاً!";
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            currentStudent = { name, section };
+            document.getElementById('display-student-name').textContent = name;
+            document.getElementById('display-student-section').textContent = section;
+            
+            errorEl.classList.add('hidden');
+            renderQuestions();
+            showSection('test-section');
+            startTimer();
+        }
+
+        function renderQuestions() {
+            const container = document.getElementById('questions-container');
+            container.innerHTML = '';
+            
+            fullQuestions.forEach((q, index) => {
+                const qDiv = document.createElement('div');
+                qDiv.className = 'p-4 md:p-6 bg-gray-50 rounded-lg border-2 border-gray-200 shadow-sm';
+                
+                let optionsHtml = '';
+                q.options.forEach((opt, optIdx) => {
+                    optionsHtml += `
+                        <label class="flex items-center p-3 cursor-pointer rounded-lg hover:bg-blue-100 transition border border-gray-200 bg-white">
+                            <input type="radio" name="q${index}" value="${optIdx}" class="form-radio h-5 w-5 text-blue-600" onchange="answers[${index}] = ${optIdx}">
+                            <span class="ml-2 mr-3 text-lg font-semibold">${opt}</span>
+                        </label>
+                    `;
+                });
+
+                qDiv.innerHTML = `
+                    <h4 class="text-xl font-bold mb-4 text-blue-900">${q.q}</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        ${optionsHtml}
+                    </div>
+                `;
+                container.appendChild(qDiv);
+            });
+        }
+
+        function startTimer() {
+            timeRemaining = 40 * 60;
+            updateTimerDisplay();
+            
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                updateTimerDisplay();
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    submitTest();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const mins = Math.floor(timeRemaining / 60).toString().padStart(2, '0');
+            const secs = (timeRemaining % 60).toString().padStart(2, '0');
+            document.getElementById('timer-display').textContent = `${mins}:${secs}`;
+        }
+
+        function submitTest() {
+            if (timerInterval) clearInterval(timerInterval);
+            
+            let score = 0;
+            let details = [];
+            
+            fullQuestions.forEach((q, index) => {
+                const studentAns = answers[index];
+                const isCorrect = studentAns === q.a;
+                if(isCorrect) score += 2.5;
+                
+                details.push({
+                    question: q.q,
+                    studentAnswer: studentAns !== null ? q.options[studentAns] : 'لم يجب',
+                    correctAnswer: q.options[q.a],
+                    isCorrect: isCorrect
+                });
+            });
+            
+            results.push({
+                name: currentStudent.name,
+                section: currentStudent.section,
+                score: score,
+                date: new Date().toLocaleString('ar-EG'),
+                details: details
+            });
+            
+            localStorage.setItem('testResults_grade5_arabic', JSON.stringify(results));
+            document.getElementById('final-score').textContent = score;
+            showSection('result-section');
+        }
+
+        function renderResultsTable() {
+            const tbody = document.getElementById('results-table-body');
+            tbody.innerHTML = '';
+            
+            if (results.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-gray-500">لا توجد نتائج مسجلة حتى الآن</td></tr>`;
+                return;
+            }
+
+            results.forEach((r, index) => {
+                const tr = document.createElement('tr');
+                tr.className = index % 2 === 0 ? 'bg-gray-50' : 'bg-white';
+                tr.innerHTML = `
+                    <td class="py-3 px-4 border-b border-gray-200 text-right">${index + 1}</td>
+                    <td class="py-3 px-4 border-b border-gray-200 text-right">${r.name}</td>
+                    <td class="py-3 px-4 border-b border-gray-200 text-center">شعبة (${r.section})</td>
+                    <td class="py-3 px-4 border-b border-gray-200 text-center">
+                        <span class="px-3 py-1 rounded-full text-white ${r.score >= 50 ? 'bg-green-500' : 'bg-red-500'}">
+                            ${r.score}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 border-b border-gray-200 text-center text-sm text-gray-500">${r.date}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function clearData() {
+            if(confirm('هل أنت متأكد من مسح جميع نتائج الطلاب؟')) {
+                results = [];
+                localStorage.removeItem('testResults_grade5_arabic');
+                renderResultsTable();
+            }
+        }
+
+        function exportAdvancedExcel() {
+            if(results.length === 0) {
+                alert('لا توجد نتائج لتصديرها.');
+                return;
+            }
+            
+            const data = results.map((r, i) => {
+                const row = {
+                    'الرقم': i + 1,
+                    'اسم الطالب': r.name,
+                    'الشعبة': r.section,
+                    'العلامة من 100': r.score,
+                    'تاريخ التقديم': r.date
+                };
+                r.details.forEach((d, qIdx) => {
+                    row[`س${qIdx + 1}`] = d.isCorrect ? 'صحيح' : 'خاطئ';
+                });
+                return row;
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(data);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "نتائج عربي خامس");
+            XLSX.writeFile(workbook, `نتائج_لغة_عربية_خامس.xlsx`);
+        }
+
+        window.onload = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('teacher')) {
+                openTeacherDashboard();
+            } else {
+                showSection('student-login');
+            }
+        };
+    </script>
+</body>
+</html>
